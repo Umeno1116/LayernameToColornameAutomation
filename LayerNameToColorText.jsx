@@ -8,7 +8,6 @@ function loadColorMapping(filePath) {
 
     try {
         file.open("r");
-        //alert("CSVファイルを開きました: " + filePath); // ファイルを開いたことを通知
         var lines = file.read().split('\n'); // 行ごとに分割
         file.close();
 
@@ -30,33 +29,50 @@ function loadColorMapping(filePath) {
     }
 }
 
-// 選択したレイヤーを取得
+// グループ内で指定した名前のレイヤーを探す関数
+function findLayerByNameInGroup(group, name) {
+    for (var i = 0; i < group.artLayers.length; i++) {
+        var layer = group.artLayers[i];
+        if (layer.name === name && layer.kind === LayerKind.TEXT) {
+            return layer;
+        }
+    }
+    return null; // 見つからない場合
+}
+
+// 選択したレイヤーのチェック
 var selectedLayer = app.activeDocument.activeLayer;
 var colorMapping = loadColorMapping(csvFilePath); // CSVファイルを読み込む
 
-// 選択したレイヤー名がマッピングに存在するかチェック
-if (colorMapping[selectedLayer.name]) {
-    // 新しいテキストを取得
-    var newText = colorMapping[selectedLayer.name];
+// カラー名レイヤーとそれ以外のレイヤーを特定する
+var mainLayer = null;
+var colorNameLayer = null;
 
-    // テキストレイヤーの名前を "カラー名" に設定
-    var textLayerName = "カラー名";
+if (selectedLayer.parent) {
+    var layers = selectedLayer.parent.artLayers;
 
-    // 指定した名前のテキストレイヤーを取得
-    try {
-        var textLayer = app.activeDocument.artLayers.getByName(textLayerName);
+    for (var i = 0; i < layers.length; i++) {
+        var layer = layers[i];
+        if (layer.name === "カラー名") {
+            colorNameLayer = layer;
+        } else if (layer.name !== selectedLayer.name) {
+            mainLayer = layer;
+        }
+    }
 
-        // テキストレイヤーが存在し、かつテキストレイヤーであるか確認
-        if (textLayer && textLayer.kind == LayerKind.TEXT) {
+    if (mainLayer && colorMapping[mainLayer.name]) {
+        var newText = colorMapping[mainLayer.name]; // 新しいテキストを取得
+
+        if (colorNameLayer) {
             // テキストレイヤーの内容を変更
-            textLayer.textItem.contents = newText;
+            colorNameLayer.textItem.contents = newText;
             alert("テキストを '" + newText + "' に変更しました。");
         } else {
-            alert("指定したテキストレイヤー '" + textLayerName + "' が見つかりません、またはテキストレイヤーではありません。");
+            alert("同じグループ内に指定したテキストレイヤー 'カラー名' が見つかりません。");
         }
-    } catch (e) {
-        alert("エラー: " + e.message);
+    } else {
+        alert("選択したレイヤーの名前 '" + mainLayer.name + "' に対応するテキストが見つかりません。");
     }
 } else {
-    alert("選択したレイヤーの名前 '" + selectedLayer.name + "' に対応するテキストが見つかりません。");
+    alert("選択したレイヤーはグループに属していません。");
 }
